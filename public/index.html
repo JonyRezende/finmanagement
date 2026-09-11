@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Finanças</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💰</text></svg>" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <h1>Financial Management</h1>
+  </header>
+
+  <aside class="side-calculator" aria-label="Calculadora">
+    <div class="side-calculator-title">Calculadora</div>
+    <output id="calculatorExpression" class="calculator-expression" aria-live="polite"></output>
+    <output id="calculatorDisplay" class="calculator-display" aria-live="polite">0</output>
+    <div class="calculator-keys">
+      <button type="button" class="calculator-key calculator-key-action" data-calc="clear">C</button>
+      <button type="button" class="calculator-key calculator-key-action" data-calc="backspace" aria-label="Apagar">&#8592;</button>
+      <button type="button" class="calculator-key calculator-key-action" data-calc="operator" data-value="/">&#247;</button>
+      <button type="button" class="calculator-key calculator-key-action" data-calc="operator" data-value="*">&#215;</button>
+      <button type="button" class="calculator-key" data-calc="digit" data-value="7">7</button>
+      <button type="button" class="calculator-key" data-calc="digit" data-value="8">8</button>
+      <button type="button" class="calculator-key" data-calc="digit" data-value="9">9</button>
+      <button type="button" class="calculator-key calculator-key-action" data-calc="operator" data-value="-">&minus;</button>
+      <button type="button" class="calculator-key" data-calc="digit" data-value="4">4</button>
+      <button type="button" class="calculator-key" data-calc="digit" data-value="5">5</button>
+      <button type="button" class="calculator-key" data-calc="digit" data-value="6">6</button>
+      <button type="button" class="calculator-key calculator-key-action" data-calc="operator" data-value="+">+</button>
+      <button type="button" class="calculator-key" data-calc="digit" data-value="1">1</button>
+      <button type="button" class="calculator-key" data-calc="digit" data-value="2">2</button>
+      <button type="button" class="calculator-key" data-calc="digit" data-value="3">3</button>
+      <button type="button" class="calculator-key calculator-key-equals" data-calc="equals">=</button>
+      <button type="button" class="calculator-key calculator-key-zero" data-calc="digit" data-value="0">0</button>
+      <button type="button" class="calculator-key" data-calc="decimal">,</button>
+    </div>
+  </aside>
+
+  <main>
+    <section class="card">
+      <div class="extrato-toolbar">
+        <div class="month-nav">
+          <button type="button" id="prevMonthBtn" class="btn-icon" aria-label="Mês anterior">◀</button>
+          <span id="monthLabel" class="month-label"></span>
+          <button type="button" id="nextMonthBtn" class="btn-icon" aria-label="Próximo mês">▶</button>
+        </div>
+        <button type="button" id="toggleFormBtn" class="btn btn-primary">+ Adicionar transação</button>
+      </div>
+
+      <form id="transactionForm" class="transaction-form hidden">
+        <input type="hidden" id="txId" />
+        <input type="hidden" id="txKind" value="oneoff" />
+        <div class="tx-primary-row">
+          <label>Data
+            <input type="date" id="txDate" required />
+          </label>
+          <label class="tx-desc-field">Descrição
+            <input type="text" id="txDescription" required />
+          </label>
+          <label>Tipo
+            <select id="txType">
+              <option value="expense">Despesa</option>
+              <option value="income">Receita</option>
+            </select>
+          </label>
+          <label>Valor (R$)
+            <input type="text" inputmode="decimal" id="txAmount" placeholder="0,00" required />
+          </label>
+          <label class="tx-recur-field">
+            <span class="tx-label-spacer">&nbsp;</span>
+            <span class="tx-checkbox-inline">
+              <input type="checkbox" id="txRecurring" />
+              Recorrente
+            </span>
+          </label>
+
+          <div class="form-actions">
+            <span class="tx-label-spacer">&nbsp;</span>
+            <button type="submit" class="btn-check" id="txSubmitBtn" title="Adicionar" aria-label="Adicionar">✓</button>
+          </div>
+        </div>
+
+        <div id="recurringFields" class="tx-conditional-fields hidden">
+          <label class="checkbox-label">
+            <input type="checkbox" id="txHasInstallments" />
+            Parcelado?
+          </label>
+          <div id="installmentFields" class="installment-fields hidden">
+            <label>Parcela atual
+              <input type="number" min="1" id="txInstallmentCurrent" />
+            </label>
+            <label>Total de parcelas
+              <input type="number" min="1" id="txInstallmentTotal" />
+            </label>
+          </div>
+        </div>
+      </form>
+
+      <div class="table-scroll">
+        <table id="extratoTable">
+          <colgroup>
+            <col class="col-desc" />
+            <col class="col-value" />
+            <col class="col-actions" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th>Descrição</th>
+              <th>Valor (R$)</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="extratoBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-header-row">
+        <h2>Projeção — próximos 6 meses</h2>
+        <div class="section-header-actions">
+          <button type="button" id="toggleProjectionBtn" class="btn btn-secondary">Mostrar projeção</button>
+          <button type="button" id="toggleChartsBtn" class="btn btn-secondary">Mostrar gráficos</button>
+        </div>
+      </div>
+      <div id="vizRoot" class="viz-root hidden">
+        <div id="chartsContainer" class="hidden">
+          <div class="chart-block">
+            <h3>Entradas x Saídas por mês</h3>
+            <div id="barChart"></div>
+          </div>
+          <div class="chart-block">
+            <h3>Saldo projetado</h3>
+            <div id="lineChart"></div>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table id="projectionTable">
+            <thead>
+              <tr><th>Mês</th><th>Entradas</th><th>Saídas</th><th>Saldo final</th></tr>
+            </thead>
+            <tbody id="projectionTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="editScopeModal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <button type="button" id="editScopeCancelBtn" class="modal-close" aria-label="Cancelar">✕</button>
+      <p>Alterar apenas esta ocorrência ou esta e todas as futuras?</p>
+      <div class="modal-actions">
+        <button type="button" id="editScopeSingleBtn" class="btn btn-secondary">Somente esta</button>
+        <button type="button" id="editScopeFutureBtn" class="btn btn-primary">Esta e as futuras</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
