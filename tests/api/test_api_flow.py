@@ -108,3 +108,39 @@ def test_bad_json_returns_400(client, session):
     _, url = client
     r = session.post(url + "/api/login", data="{invalid", headers={"Content-Type": "application/json"})
     assert r.status_code == 400
+
+
+def test_security_headers_present(client, session):
+    _, url = client
+    r = session.get(url + "/")
+    assert r.headers["X-Content-Type-Options"] == "nosniff"
+    assert r.headers["X-Frame-Options"] == "DENY"
+    assert r.headers.get("Content-Security-Policy")
+    assert r.headers.get("Strict-Transport-Security")
+
+
+def test_set_cookie_is_secure_behind_https(client, session):
+    _, url = client
+    r = session.post(url + "/api/register", headers={"X-Forwarded-Proto": "https"}, json={
+        "email": "s@b.com", "password": "senha1234", "password_confirm": "senha1234",
+    })
+    assert r.status_code == 200
+    assert "Secure" in r.headers["Set-Cookie"]
+    assert "HttpOnly" in r.headers["Set-Cookie"]
+
+
+def test_cookie_not_secure_over_plain_http(client, session):
+    _, url = client
+    r = session.post(url + "/api/register", json={
+        "email": "p@b.com", "password": "senha1234", "password_confirm": "senha1234",
+    })
+    assert r.status_code == 200
+    assert "Secure" not in r.headers["Set-Cookie"]
+
+
+def test_large_body_is_rejected(client, session):
+    _, url = client
+    big = "x" * (512 * 1024 + 10)
+    r = session.post(url + "/api/register", headers={"Content-Type": "application/json"},
+                     data=f'{{"email":"big@b.com","password":"{big}","password_confirm":"{big}"}}')
+    assert r.status_code == 413

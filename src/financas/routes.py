@@ -12,6 +12,19 @@ from .app import App
 from .errors import Error
 from .services import rules
 
+SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+    "Content-Security-Policy": (
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; connect-src 'self'; base-uri 'self'; "
+        "frame-ancestors 'none'; form-action 'self'"
+    ),
+}
+
 
 class FinancasServer(ThreadingHTTPServer):
     allow_reuse_address = True
@@ -27,20 +40,31 @@ class Handler(BaseHTTPRequestHandler):
 
     # ---------- helpers ----------
 
+    def _security_headers(self):
+        for name, value in SECURITY_HEADERS.items():
+            self.send_header(name, value)
+
+    def _is_secure(self):
+        return self.headers.get("X-Forwarded-Proto") == "https"
+
     def _send_json(self, obj, status=200, set_cookie=None, clear_cookie=False):
         body = json.dumps(obj, ensure_ascii=False, indent=2).encode("utf-8")
+        secure = "; Secure" if self._is_secure() else ""
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         if set_cookie:
-            self.send_header("Set-Cookie", f"{config.SESSION_COOKIE}={set_cookie}; Max-Age=2592000; HttpOnly; Path=/; SameSite=Lax")
+            self.send_header("Set-Cookie", f"{config.SESSION_COOKIE}={set_cookie}; Max-Age=2592000; HttpOnly; Path=/; SameSite=Lax{secure}")
         if clear_cookie:
-            self.send_header("Set-Cookie", f"{config.SESSION_COOKIE}=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0")
+            self.send_header("Set-Cookie", f"{config.SESSION_COOKIE}=; HttpOnly; Path=/; SameSite=Lax{secure}; Max-Age=0")
+        self._security_headers()
         self.end_headers()
         self.wfile.write(body)
 
     def _read_json_body(self):
         length = int(self.headers.get("Content-Length", 0))
+        if length > config.MAX_BODY_BYTES:
+            raise Error("Corpo da requisição muito grande", status=413)
         raw = self.rfile.read(length)
         return json.loads(raw)
 
@@ -90,6 +114,7 @@ class Handler(BaseHTTPRequestHandler):
         file_path = os.path.normpath(os.path.join(config.PUBLIC_DIR, path.lstrip("/")))
         if not file_path.startswith(config.PUBLIC_DIR) or not os.path.isfile(file_path):
             self.send_response(404)
+            self._security_headers()
             self.end_headers()
             self.wfile.write(b"Not found")
             return
@@ -100,6 +125,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", config.MIME_TYPES.get(ext, "application/octet-stream"))
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        self._security_headers()
         self.end_headers()
         self.wfile.write(body)
 
@@ -113,6 +139,7 @@ class Handler(BaseHTTPRequestHandler):
                 email,
                 payload.get("password") or "",
                 payload.get("password_confirm") or "",
+                ip=self.client_address[0],
             )
             self._send_json({"email": email}, set_cookie=token)
         self._respond_with_errors(run)
@@ -121,7 +148,7 @@ class Handler(BaseHTTPRequestHandler):
         def run():
             payload = self._read_json_body()
             email = rules.normalize_email(payload.get("email"))
-            token = self.server.app.auth.login(email, payload.get("password") or "")
+            token = self.server.app.auth.login(email, payload.get("password") or "", ip=self.client_address[0])
             self._send_json({"email": email}, set_cookie=token)
         self._respond_with_errors(run)
 
@@ -141,6 +168,7 @@ class Handler(BaseHTTPRequestHandler):
                 email,
                 payload.get("current_password") or "",
                 payload.get("new_password") or "",
+                token=self._current_token(),
             )
             self._send_json({"ok": True})
         self._respond_with_errors(run)

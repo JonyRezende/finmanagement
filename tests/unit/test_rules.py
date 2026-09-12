@@ -9,7 +9,7 @@ def test_normalize_email():
 
 @pytest.mark.parametrize("email", [
     "a@b.com",
-    "jonathas.rezende@gmail.com",
+    "pessoa@example.com",
     "a.b+c@x.io",
 ])
 def test_valid_emails(email):

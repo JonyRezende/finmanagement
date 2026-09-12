@@ -38,5 +38,8 @@ class FakeStore:
     def get_session(self, token):
         return self.sessions.get(token)
 
+    def list_sessions(self, email):
+        return [t for t, s in self.sessions.items() if s["email"] == email]
+
     def delete_session(self, token):
         self.sessions.pop(token, None)

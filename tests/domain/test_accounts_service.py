@@ -70,3 +70,22 @@ def test_change_password_other_sessions_survive():
     token = auth.register("a@b.com", "senha1234", "senha1234")
     accounts.change_password("a@b.com", "senha1234", "nova12345")
     assert auth.email_for(token) == "a@b.com"
+
+
+def test_change_password_revokes_other_sessions():
+    _, auth, accounts = make_svc()
+    kept = auth.register("a@b.com", "senha1234", "senha1234")
+    other = auth.login("a@b.com", "senha1234")
+    accounts.change_password("a@b.com", "senha1234", "nova12345", token=kept)
+    assert auth.email_for(kept) == "a@b.com"
+    assert auth.email_for(other) is None
+
+
+def test_change_email_revokes_other_sessions():
+    store, auth, accounts = make_svc()
+    kept = auth.register("a@b.com", "senha1234", "senha1234")
+    other = auth.login("a@b.com", "senha1234")
+    accounts.change_email("a@b.com", kept, "senha1234", "novo@b.com")
+    assert auth.email_for(kept) == "novo@b.com"
+    assert auth.email_for(other) is None
+    assert store.list_sessions("a@b.com") == []
