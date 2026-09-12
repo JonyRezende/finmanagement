@@ -30,14 +30,14 @@ A branch `main` é protegida:
 - Descreva o que foi alterado e por quê no corpo do PR.
 - Se a mudança for visual ou mudar comportamento, mencionar isso ajuda na revisão.
 
-## Ambientes
+## Ambiente local
 
-- **Produção**: `https://finpilot.jonyrezende.dev`
-- **Local**: consulte o `README.md` (seção *Executando localmente*).
+Consulte o `README.md` (seção *Executando localmente*) para configurar o
+ambiente de desenvolvimento.
 
 ## Convenções de código
 
 - Backend em Python puro (stdlib) — evite adicionar frameworks ao servidor.
 - Frontend em HTML/CSS/JS vanilla, sem bibliotecas. Gráficos usam SVG.
-- Mantenha o comportamento atual de dados (coleções `users` e `user_data` no
-  Firestore) ao adicionar novas funcionalidades.
+- Mantenha compatibilidade com o modelo de dados existente do serviço de
+  persistência ao adicionar novas funcionalidades.

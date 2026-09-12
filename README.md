@@ -5,46 +5,42 @@ recorrências, parcelamentos, lançamentos avulsos, projeções e gráficos.
 
 ## Funcionalidades
 
-- **Autenticação** por email/senha (hash PBKDF2 em Firestore, sessão via cookie)
+- **Autenticação** por email/senha, com sessão via cookie
 - **Extrato mensal** agrupado por dia, com saldo do mês anterior e saldo diário
 - **Recorrências** com data de início/fim, parcelamento e ajustes pontuais por mês
 - **Edição inteligente**: alterar apenas a ocorrência do mês ou a partir dela
-- **Projeção de 6 meses** com tabela, gráfico de barras (entradas × saídas) e
-  gráfico de linha do saldo projetado
-- **Calculadora** lateral
-- Dados armazenados por usuário no **Cloud Firestore**
+- **Projeção** com tabela, gráfico de barras (entradas × saídas) e gráfico de
+  linha do saldo projetado
+- **Calculadora** incorporada
 
 ## Tecnologias
 
-- **Backend**: Python 3.11+ (stdlib `http.server`) + Cloud Firestore
-- **Frontend**: HTML/CSS/JS vanilla (sem dependências), gráficos via SVG
-- **Infra**: nginx (reverse proxy + TLS via Let's Encrypt), Google Cloud
+- **Backend**: Python (stdlib) com persistência gerenciada
+- **Frontend**: HTML/CSS/JS sem dependências; gráficos em SVG
 
 ## Executando localmente
 
-Requisitos: Python 3.11+, credenciais do Google Cloud com acesso ao Firestore.
+Requisitos: Python 3.11+ e acesso ao serviço de persistência de dados.
 
 ```bash
 # 1. Crie um ambiente virtual e instale as dependências
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 
-# 2. Aponte as credenciais do Google Cloud (Application Default Credentials)
-export GOOGLE_APPLICATION_CREDENTIALS=/caminho/para/credentials.json
-
+# 2. Configure as credenciais de acesso aos dados
 # 3. Suba o servidor
 .venv/bin/python server.py
 ```
 
-Acesse em <http://127.0.0.1:8765>.
+Abra no navegador o endereço local informado no terminal ao iniciar.
 
 ## Estrutura do projeto
 
 ```
-├── server.py               # servidor HTTP e API (/api/{register,login,logout})
-├── auth.py                 # hashing de senha, sessões, rate limit
-├── firestore_client.py     # acesso ao Firestore (users, user_data)
-├── migrate_existing_data.py# migra data.json para uma conta no Firestore
+├── server.py               # servidor web e API
+├── auth.py                 # autenticação e sessões
+├── firestore_client.py     # acesso ao serviço de dados
+├── migrate_existing_data.py# utilitário de importação de dados legados
 ├── requirements.txt
 └── public/                 # frontend estático
     ├── index.html          # painel de finanças
@@ -54,26 +50,7 @@ Acesse em <http://127.0.0.1:8765>.
     └── style.css / login.css
 ```
 
-## Modelo de dados (Firestore)
+## Contribuindo
 
-- `users/{email}` — credenciais (`salt`, `password_hash`, `created_at`)
-- `user_data/{email}` — dados financeiros (`recurrences`, `oneOffs`)
-
-## Migração de dados existentes
-
-Para importar um `data.json` legado para uma conta nova:
-
-```bash
-.venv/bin/python migrate_existing_data.py "seu-email@exemplo.com" "sua-senha"
-```
-
-## Deploy
-
-A aplicação roda atrás do nginx, que faz proxy para `127.0.0.1:8765` e termina
-TLS com certificado Let's Encrypt (renovação automática via systemd timer).
-O serviço é gerenciado pelo systemd.
-
-```bash
-sudo systemctl restart financas   # reinicia o app
-sudo systemctl status financas    # acompanha o status
-```
+Veja o [CONTRIBUTING.md](CONTRIBUTING.md) para orientações sobre como
+participar do projeto. Toda alteração na `main` passa por Pull Request.
