@@ -43,7 +43,7 @@ gcloud secrets add-iam-policy-binding "$SECRET" --project "$PROJECT" \
 echo "==> anexando SA de bootstrap a instancia"
 CURRENT_SA=$(gcloud compute instances describe "$INSTANCE" --zone "$ZONE" \
   --format="value(serviceAccounts[].email)" 2>/dev/null || true)
-if [ "$CURRENT_SA" != "$VM_SA" ]; then
+if [[ "$CURRENT_SA" != "$VM_SA" ]]; then
   gcloud compute instances stop "$INSTANCE" --zone "$ZONE" --quiet
   gcloud compute instances set-service-account "$INSTANCE" --zone "$ZONE" \
     --service-account "$VM_SA" --scopes cloud-platform

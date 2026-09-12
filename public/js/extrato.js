@@ -9,6 +9,66 @@ function capitalize(str) {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
+function transactionTag(t) {
+  if (t.kind !== "recurrence") return "";
+  const label = t.installmentLabel ? `parcela ${t.installmentLabel}` : "recorrente";
+  return `<span class="extrato-tag">${label}</span>`;
+}
+
+function transactionRowHtml(t) {
+  const sign = t.type === "income" ? "+" : "-";
+  const valueClass = t.type === "income" ? "amount-income" : "amount-expense";
+  return `
+    <td>${escapeHtml(t.description)}${transactionTag(t)}</td>
+    <td class="extrato-value ${valueClass}">${sign} ${fmtMoney(t.amount)}</td>
+    <td class="extrato-actions">
+      <button class="btn-icon-sm btn-icon-edit" data-edit-kind="${t.kind}" data-edit-id="${t.id}" title="Editar" aria-label="Editar">✎</button>
+      <button class="btn-icon-sm btn-icon-delete" data-delete-kind="${t.kind}" data-delete-id="${t.id}" title="Excluir" aria-label="Excluir">✕</button>
+    </td>`;
+}
+
+function groupByDate(transactions) {
+  const groups = [];
+  for (const t of transactions) {
+    const key = t.date.toDateString();
+    const group = groups.find((g) => g.key === key);
+    if (group) {
+      group.items.push(t);
+      continue;
+    }
+    groups.push({ key, date: t.date, items: [t] });
+  }
+  return groups;
+}
+
+function appendDateRow(body, group) {
+  const weekday = capitalize(group.date.toLocaleDateString("pt-BR", { weekday: "long" }));
+  const dateLabel = group.date.toLocaleDateString("pt-BR");
+  const dateRow = document.createElement("tr");
+  dateRow.className = "extrato-date-row day-frame-top";
+  dateRow.innerHTML = `<td colspan="3"><span class="extrato-date-badge">${dateLabel}, ${weekday}</span></td>`;
+  body.appendChild(dateRow);
+}
+
+function appendTransactionRow(body, t) {
+  const row = document.createElement("tr");
+  row.className = "day-frame-item";
+  row.innerHTML = transactionRowHtml(t);
+  body.appendChild(row);
+}
+
+function appendDaySummaryRows(body, running) {
+  const totalRow = document.createElement("tr");
+  totalRow.className = "extrato-summary-row day-frame-bottom";
+  totalRow.innerHTML = `<td colspan="2" class="extrato-value"><span class="extrato-summary-label">Saldo do dia</span><strong>${fmtMoney(running)}</strong></td><td></td>`;
+  body.appendChild(totalRow);
+
+  const gapRow = document.createElement("tr");
+  gapRow.className = "day-frame-gap";
+  gapRow.innerHTML = `<td colspan="3"></td>`;
+  body.appendChild(gapRow);
+}
+
 export function renderExtrato() {
   document.getElementById("monthLabel").textContent = `${MONTH_LABELS_FULL[displayMonth.monthIndex]}/${displayMonth.year}`;
 
@@ -32,56 +92,14 @@ export function renderExtrato() {
     return;
   }
 
-  const groups = [];
-  for (const t of transactions) {
-    const key = t.date.toDateString();
-    let group = groups.find((g) => g.key === key);
-    if (!group) {
-      group = { key, date: t.date, items: [] };
-      groups.push(group);
-    }
-    group.items.push(t);
-  }
-
   let running = startBalance;
-  for (const group of groups) {
-    const weekday = capitalize(group.date.toLocaleDateString("pt-BR", { weekday: "long" }));
-    const dateLabel = group.date.toLocaleDateString("pt-BR");
-
-    const dateRow = document.createElement("tr");
-    dateRow.className = "extrato-date-row day-frame-top";
-    dateRow.innerHTML = `<td colspan="3"><span class="extrato-date-badge">${dateLabel}, ${weekday}</span></td>`;
-    body.appendChild(dateRow);
-
+  for (const group of groupByDate(transactions)) {
+    appendDateRow(body, group);
     for (const t of group.items) {
       running += t.type === "income" ? t.amount : -t.amount;
-      const sign = t.type === "income" ? "+" : "-";
-      const valueClass = t.type === "income" ? "amount-income" : "amount-expense";
-      const tag =
-        t.kind === "recurrence"
-          ? `<span class="extrato-tag">${t.installmentLabel ? `parcela ${t.installmentLabel}` : "recorrente"}</span>`
-          : "";
-      const row = document.createElement("tr");
-      row.className = "day-frame-item";
-      row.innerHTML = `
-        <td>${escapeHtml(t.description)}${tag}</td>
-        <td class="extrato-value ${valueClass}">${sign} ${fmtMoney(t.amount)}</td>
-        <td class="extrato-actions">
-          <button class="btn-icon-sm btn-icon-edit" data-edit-kind="${t.kind}" data-edit-id="${t.id}" title="Editar" aria-label="Editar">✎</button>
-          <button class="btn-icon-sm btn-icon-delete" data-delete-kind="${t.kind}" data-delete-id="${t.id}" title="Excluir" aria-label="Excluir">✕</button>
-        </td>`;
-      body.appendChild(row);
+      appendTransactionRow(body, t);
     }
-
-    const totalRow = document.createElement("tr");
-    totalRow.className = "extrato-summary-row day-frame-bottom";
-    totalRow.innerHTML = `<td colspan="2" class="extrato-value"><span class="extrato-summary-label">Saldo do dia</span><strong>${fmtMoney(running)}</strong></td><td></td>`;
-    body.appendChild(totalRow);
-
-    const gapRow = document.createElement("tr");
-    gapRow.className = "day-frame-gap";
-    gapRow.innerHTML = `<td colspan="3"></td>`;
-    body.appendChild(gapRow);
+    appendDaySummaryRows(body, running);
   }
 
   body.querySelectorAll("[data-edit-id]").forEach((btn) =>

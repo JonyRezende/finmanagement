@@ -30,12 +30,16 @@ export function isRecurrenceActiveInMonth(rec, year, monthIndex, refYear, refMon
   return true;
 }
 
+function getMonthOverride(rec, key) {
+  return rec.overrides?.[key];
+}
+
 export function getMonthTransactions(recurrences, oneOffs, year, monthIndex, refYear, refMonthIndex) {
   const items = [];
   const key = monthKeyFor(year, monthIndex);
   for (const rec of recurrences) {
     if (!isRecurrenceActiveInMonth(rec, year, monthIndex, refYear, refMonthIndex)) continue;
-    const ov = rec.overrides && rec.overrides[key];
+    const ov = getMonthOverride(rec, key);
     const description = ov?.description ?? rec.description;
     const type = ov?.type ?? rec.type;
     const amount = Number(ov?.amount ?? rec.amount);
@@ -105,39 +109,59 @@ export function balanceAtMonthStart(recurrences, oneOffs, offset, refYear, refMo
   return bal;
 }
 
-export function computeProjection(recurrences, oneOffs, refYear, refMonthIndex, monthCount = 7) {
+function addProjectionAmount(m, type, amount) {
+  if (type === "income") m.income += amount;
+  else m.expense += amount;
+}
+
+function buildMonthSkeleton(refYear, refMonthIndex, monthCount) {
   const months = [];
   for (let k = 0; k < monthCount; k++) {
     const d = new Date(refYear, refMonthIndex + k, 1);
     months.push({ year: d.getFullYear(), monthIndex: d.getMonth(), income: 0, expense: 0 });
   }
+  return months;
+}
 
+function applyRecurrencesToMonths(recurrences, months, refYear, refMonthIndex) {
   for (const rec of recurrences) {
-    for (let k = 0; k < months.length; k++) {
-      const m = months[k];
-      if (isRecurrenceActiveInMonth(rec, m.year, m.monthIndex, refYear, refMonthIndex)) {
-        if (rec.type === "income") m.income += Number(rec.amount);
-        else m.expense += Number(rec.amount);
-      }
+    for (const m of months) {
+      if (!isRecurrenceActiveInMonth(rec, m.year, m.monthIndex, refYear, refMonthIndex)) continue;
+      addProjectionAmount(m, rec.type, Number(rec.amount));
     }
   }
+}
 
+function applyOneOffsToMonths(oneOffs, months) {
   for (const item of oneOffs) {
     const d = new Date(item.date + "T00:00:00");
     for (const m of months) {
-      if (d.getFullYear() === m.year && d.getMonth() === m.monthIndex) {
-        if (item.type === "income") m.income += Number(item.amount);
-        else m.expense += Number(item.amount);
-      }
+      if (d.getFullYear() !== m.year || d.getMonth() !== m.monthIndex) continue;
+      addProjectionAmount(m, item.type, Number(item.amount));
     }
   }
+}
 
-  let balance = balanceAtMonthStart(recurrences, oneOffs, 0, refYear, refMonthIndex);
+function monthLabel(m) {
+  const labels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+  return `${labels[m.monthIndex]}/${String(m.year).slice(2)}`;
+}
+
+function finalizeMonths(months, startBalance) {
+  let balance = startBalance;
   for (const m of months) {
     m.net = m.income - m.expense;
     balance += m.net;
     m.endBalance = balance;
-    m.label = `${["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"][m.monthIndex]}/${String(m.year).slice(2)}`;
+    m.label = monthLabel(m);
   }
   return months;
+}
+
+export function computeProjection(recurrences, oneOffs, refYear, refMonthIndex, monthCount = 7) {
+  const startBalance = balanceAtMonthStart(recurrences, oneOffs, 0, refYear, refMonthIndex);
+  const months = buildMonthSkeleton(refYear, refMonthIndex, monthCount);
+  applyRecurrencesToMonths(recurrences, months, refYear, refMonthIndex);
+  applyOneOffsToMonths(oneOffs, months);
+  return finalizeMonths(months, startBalance);
 }

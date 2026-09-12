@@ -109,104 +109,138 @@ function deleteTransaction(kind, id) {
   render();
 }
 
+function readFormFields() {
+  return {
+    id: document.getElementById("txId").value || uid(),
+    isRecurring: document.getElementById("txRecurring").checked,
+    description: document.getElementById("txDescription").value.trim(),
+    type: document.getElementById("txType").value,
+    amount: parseAmountInput(document.getElementById("txAmount").value),
+    date: document.getElementById("txDate").value,
+    previousKind: document.getElementById("txKind").value,
+  };
+}
+
+function removeFromOldCollection(previousKind, isRecurring, id) {
+  if (previousKind === "recurrence" && !isRecurring) state.recurrences = state.recurrences.filter((r) => r.id !== id);
+  else if (previousKind === "oneoff" && isRecurring) state.oneOffs = state.oneOffs.filter((o) => o.id !== id);
+}
+
+function readInstallmentFields() {
+  const hasInstallments = document.getElementById("txHasInstallments").checked;
+  return {
+    hasInstallments,
+    current: hasInstallments ? Number(document.getElementById("txInstallmentCurrent").value) : null,
+    total: hasInstallments ? Number(document.getElementById("txInstallmentTotal").value) : null,
+  };
+}
+
+function validateInstallments(inst) {
+  if (!inst.hasInstallments || (inst.current >= 1 && inst.total >= 1)) return true;
+  alert("Preencha a parcela atual e o total de parcelas.");
+  return false;
+}
+
+function saveSingleOverride(f, day) {
+  const rec = state.recurrences.find((r) => r.id === f.id);
+  if (!rec) return;
+  rec.overrides = rec.overrides || {};
+  rec.overrides[editMonthKey] = { description: f.description, type: f.type, amount: f.amount, day };
+}
+
+function computeFutureInstallmentCurrent(rec, inst) {
+  if (!inst.hasInstallments || !rec.hasInstallments) return inst.current;
+  const ref = referenceMonth();
+  const [ey, em] = editMonthKey.split("-").map(Number);
+  return Number(rec.installmentCurrent) + monthOffset(ref.year, ref.monthIndex, ey, em - 1);
+}
+
+function saveFutureRecurrence(f, inst, day) {
+  const rec = state.recurrences.find((r) => r.id === f.id);
+  if (!rec) return;
+  rec.endMonth = monthBefore(editMonthKey);
+  state.recurrences.push({
+    id: uid(),
+    description: f.description,
+    type: f.type,
+    amount: f.amount,
+    date: f.date,
+    day,
+    startMonth: editMonthKey,
+    endMonth: null,
+    overrides: {},
+    hasInstallments: inst.hasInstallments,
+    installmentCurrent: computeFutureInstallmentCurrent(rec, inst),
+    installmentTotal: inst.total,
+  });
+}
+
+function saveOrCreateRecurrence(f, inst, day, thisMonthKey) {
+  const rec = {
+    id: f.id,
+    description: f.description,
+    type: f.type,
+    amount: f.amount,
+    date: f.date,
+    day,
+    startMonth: thisMonthKey,
+    endMonth: null,
+    overrides: {},
+    hasInstallments: inst.hasInstallments,
+    installmentCurrent: inst.current,
+    installmentTotal: inst.total,
+  };
+  const idx = state.recurrences.findIndex((r) => r.id === f.id);
+  if (idx >= 0) state.recurrences[idx] = rec;
+  else state.recurrences.push(rec);
+}
+
+function saveRecurring(f) {
+  const inst = readInstallmentFields();
+  if (!validateInstallments(inst)) return false;
+  const dateObj = new Date(f.date + "T00:00:00");
+  const day = dateObj.getDate();
+  const thisMonthKey = monthKeyFor(dateObj.getFullYear(), dateObj.getMonth());
+
+  if (f.previousKind === "recurrence" && editScope === "single") {
+    saveSingleOverride(f, day);
+  } else if (f.previousKind === "recurrence" && editScope === "future") {
+    saveFutureRecurrence(f, inst, day);
+  } else {
+    saveOrCreateRecurrence(f, inst, day, thisMonthKey);
+  }
+  return true;
+}
+
+function saveOneOff(f) {
+  const oneOff = {
+    id: f.id,
+    description: f.description,
+    type: f.type,
+    amount: f.amount,
+    date: f.date,
+  };
+  const idx = state.oneOffs.findIndex((o) => o.id === f.id);
+  if (idx >= 0) state.oneOffs[idx] = oneOff;
+  else state.oneOffs.push(oneOff);
+}
+
 function handleSubmit(e) {
   e.preventDefault();
 
-  const id = document.getElementById("txId").value || uid();
-  const isRecurring = document.getElementById("txRecurring").checked;
-  const description = document.getElementById("txDescription").value.trim();
-  const type = document.getElementById("txType").value;
-  const amount = parseAmountInput(document.getElementById("txAmount").value);
-  const date = document.getElementById("txDate").value;
-  const previousKind = document.getElementById("txKind").value;
-
-  if (!date) {
+  const f = readFormFields();
+  if (!f.date) {
     alert("Selecione a data.");
     return;
   }
 
   // Se o tipo (recorrente/avulsa) mudou durante uma edição, remove do lugar antigo.
-  if (previousKind === "recurrence" && !isRecurring) {
-    state.recurrences = state.recurrences.filter((r) => r.id !== id);
-  } else if (previousKind === "oneoff" && isRecurring) {
-    state.oneOffs = state.oneOffs.filter((o) => o.id !== id);
-  }
+  removeFromOldCollection(f.previousKind, f.isRecurring, f.id);
 
-  if (isRecurring) {
-    const hasInstallments = document.getElementById("txHasInstallments").checked;
-    if (hasInstallments) {
-      const c = Number(document.getElementById("txInstallmentCurrent").value);
-      const t = Number(document.getElementById("txInstallmentTotal").value);
-      if (!c || !t || c < 1 || t < 1) {
-        alert("Preencha a parcela atual e o total de parcelas.");
-        return;
-      }
-    }
-    const day = new Date(date + "T00:00:00").getDate();
-    const dateObj = new Date(date + "T00:00:00");
-    const thisMonthKey = monthKeyFor(dateObj.getFullYear(), dateObj.getMonth());
-
-    if (previousKind === "recurrence" && editScope === "single") {
-      const rec = state.recurrences.find((r) => r.id === id);
-      if (rec) {
-        rec.overrides = rec.overrides || {};
-        rec.overrides[editMonthKey] = { description, type, amount, day };
-      }
-    } else if (previousKind === "recurrence" && editScope === "future") {
-      const rec = state.recurrences.find((r) => r.id === id);
-      if (rec) {
-        rec.endMonth = monthBefore(editMonthKey);
-        let newCurrent = hasInstallments ? Number(document.getElementById("txInstallmentCurrent").value) : null;
-        if (hasInstallments && rec.hasInstallments) {
-          const ref = referenceMonth();
-          const [ey, em] = editMonthKey.split("-").map(Number);
-          newCurrent = Number(rec.installmentCurrent) + monthOffset(ref.year, ref.monthIndex, ey, em - 1);
-        }
-        state.recurrences.push({
-          id: uid(),
-          description,
-          type,
-          amount,
-          date,
-          day,
-          startMonth: editMonthKey,
-          endMonth: null,
-          overrides: {},
-          hasInstallments,
-          installmentCurrent: newCurrent,
-          installmentTotal: hasInstallments ? Number(document.getElementById("txInstallmentTotal").value) : null,
-        });
-      }
-    } else {
-      const rec = {
-        id,
-        description,
-        type,
-        amount,
-        date,
-        day,
-        startMonth: thisMonthKey,
-        endMonth: null,
-        overrides: {},
-        hasInstallments,
-        installmentCurrent: hasInstallments ? Number(document.getElementById("txInstallmentCurrent").value) : null,
-        installmentTotal: hasInstallments ? Number(document.getElementById("txInstallmentTotal").value) : null,
-      };
-      const idx = state.recurrences.findIndex((r) => r.id === id);
-      if (idx >= 0) state.recurrences[idx] = rec;
-      else state.recurrences.push(rec);
-    }
+  if (f.isRecurring) {
+    if (!saveRecurring(f)) return;
   } else {
-    const oneOff = {
-      id,
-      description,
-      type,
-      amount,
-      date,
-    };
-    const idx = state.oneOffs.findIndex((o) => o.id === id);
-    if (idx >= 0) state.oneOffs[idx] = oneOff;
-    else state.oneOffs.push(oneOff);
+    saveOneOff(f);
   }
 
   saveData();
