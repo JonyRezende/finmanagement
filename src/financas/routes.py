@@ -200,8 +200,10 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
 
 
-def make_server(store=None):
-    return FinancasServer(("127.0.0.1", config.PORT), App(store))
+def make_server(store=None, port=None):
+    if port is None:
+        port = config.PORT
+    return FinancasServer(("127.0.0.1", port), App(store))
 
 
 def main():
