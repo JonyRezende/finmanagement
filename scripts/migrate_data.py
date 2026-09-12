@@ -15,7 +15,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.financas.domains import auth  # noqa: E402
-from src.financas.infra import firestore  # noqa: E402
+from src.financas.infra.firestore import default_store as store  # noqa: E402
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_FILE = os.path.join(PROJECT_ROOT, "data.json")
@@ -35,7 +35,7 @@ def main():
     if len(password) < 8:
         print("Senha deve ter ao menos 8 caracteres.")
         sys.exit(1)
-    if firestore.get_user_auth(email):
+    if store.get_user_auth(email):
         print(f"Já existe uma conta para {email}. Abortando.")
         sys.exit(1)
     if not os.path.exists(DATA_FILE):
@@ -46,13 +46,13 @@ def main():
         existing_data = json.load(f)
 
     salt, password_hash = auth.hash_password(password)
-    firestore.save_user_auth(email, {
+    store.save_user_auth(email, {
         "email": email,
         "salt": salt,
         "password_hash": password_hash,
         "created_at": time.time(),
     })
-    firestore.save_user_data(email, {
+    store.save_user_data(email, {
         "recurrences": existing_data.get("recurrences", []),
         "oneOffs": existing_data.get("oneOffs", []),
     })
