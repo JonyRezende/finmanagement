@@ -1,0 +1,1 @@
+"""Domínios da aplicação: autenticação, conta e dados financeiros."""

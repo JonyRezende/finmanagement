@@ -1,0 +1,1 @@
+"""Aplicação de finanças: servidor HTTP, domínios e infraestrutura."""

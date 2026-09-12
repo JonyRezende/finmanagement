@@ -1,4 +1,4 @@
-"""Autenticação simples: hash de senha, sessões persistentes e rate limit de login."""
+"""Domínio de autenticação: hash de senha, sessões persistentes e rate limit de login."""
 import hashlib
 import hmac
 import os
@@ -6,7 +6,7 @@ import re
 import secrets
 import time
 
-import firestore_client
+from ..infra import firestore
 
 PBKDF2_ITERATIONS = 200_000
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -42,7 +42,7 @@ def verify_password(password, salt_hex, hash_hex):
 def create_session(email):
     token = secrets.token_urlsafe(32)
     expires_at = time.time() + SESSION_TTL_DAYS * 86400
-    firestore_client.save_session(token, email, expires_at)
+    firestore.save_session(token, email, expires_at)
     SESSIONS[token] = email
     return token
 
@@ -51,12 +51,12 @@ def get_session_email(token):
     email = SESSIONS.get(token)
     if email:
         return email
-    data = firestore_client.get_session(token)
+    data = firestore.get_session(token)
     if not data:
         return None
     expires_at = data.get("expires_at") or 0
     if time.time() >= expires_at:
-        firestore_client.delete_session(token)
+        firestore.delete_session(token)
         return None
     email = data.get("email")
     if email:
@@ -66,15 +66,15 @@ def get_session_email(token):
 
 def destroy_session(token):
     SESSIONS.pop(token, None)
-    firestore_client.delete_session(token)
+    firestore.delete_session(token)
 
 
 def update_session_email(token, new_email):
     if token in SESSIONS:
         SESSIONS[token] = new_email
-    data = firestore_client.get_session(token)
+    data = firestore.get_session(token)
     if data:
-        firestore_client.save_session(token, new_email, data.get("expires_at") or time.time())
+        firestore.save_session(token, new_email, data.get("expires_at") or time.time())
 
 
 def is_login_blocked(email):

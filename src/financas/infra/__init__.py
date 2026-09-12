@@ -1,0 +1,1 @@
+"""Infraestrutura: persistência e utilidades de plataforma."""
