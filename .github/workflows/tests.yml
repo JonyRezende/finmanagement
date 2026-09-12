@@ -6,6 +6,12 @@ on:
   pull_request:
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/ruff-action@v1
+
   unit:
     runs-on: ubuntu-latest
     steps:
@@ -14,7 +20,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -q -r requirements.txt -r requirements-dev.txt
-      - run: python -m pytest tests -q
+      - run: python -m pytest tests --cov=src --cov-report=xml -q
 
   js:
     runs-on: ubuntu-latest
@@ -24,3 +30,21 @@ jobs:
         with:
           node-version: "20"
       - run: node --test tests/js/
+
+  sonarcloud:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -q -r requirements.txt -r requirements-dev.txt
+      - run: python -m pytest tests --cov=src --cov-report=xml -q
+      - name: SonarCloud
+        if: ${{ env.SONAR_TOKEN != '' }}
+        uses: SonarSource/sonarcloud-github-action@v5

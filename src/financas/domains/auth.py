@@ -2,8 +2,8 @@
 import time
 
 from ..errors import Error
-from ..services import rate_limit, rules
 from ..services import password as pwd
+from ..services import rate_limit, rules
 from ..services.sessions import SessionService
 
 
