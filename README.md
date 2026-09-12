@@ -19,8 +19,9 @@ Autenticação por email/senha e dados persistidos no Google Cloud Firestore.
 
 - **Backend**: Python (stdlib, HTTP server próprio), organizado em camadas de
   domínio e serviços
-- **Persistência**: Google Cloud Firestore; credencial da service account via
-  Secret Manager
+- **Persistência**: Google Cloud Firestore em produção; arquivo JSON local
+  (`financas-local.json`) para desenvolvimento sem GCP; credencial da service
+  account via Secret Manager
 - **Frontend**: HTML/CSS/JS vanilla em módulos ESM, sem frameworks nem
   bundlers; gráficos em SVG
 - **Testes**: pytest (unitários, de domínio e de API) + `node:test` para os
@@ -45,29 +46,35 @@ node --test tests/js/
 
 ## Como executar localmente
 
-Requisitos: **Python 3.11+** e acesso ao Google Cloud (Application Default
-Credentials — ex. `gcloud auth application-default login` — ou
-`GOOGLE_APPLICATION_CREDENTIALS`).
+Requisitos: **Python 3.11+**. Não precisa de conta GCP — sem credenciais
+configuradas, os dados ficam num arquivo local `financas-local.json`
+(ignorado pelo git).
 
 ```bash
 # 1. Crie um ambiente virtual e instale as dependências
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 
-# 2. Configure as credenciais de acesso aos dados
-# 3. Suba o servidor
+# 2. Suba o servidor
 .venv/bin/python server.py
 ```
 
 Abra no navegador o endereço local informado no terminal ao iniciar.
+
+O backend de persistência é escolhido automaticamente: com credenciais GCP
+(`FINANCAS_SA_SECRET` ou `GOOGLE_APPLICATION_CREDENTIALS`) usa o Firestore;
+caso contrário, o JSON local. Para forçar: `FINANCAS_STORAGE=local` ou
+`FINANCAS_STORAGE=firestore`. O caminho do arquivo local pode ser definido
+por `FINANCAS_DB`.
 
 ## Estrutura e arquitetura
 
 Arquitetura simplificada: o **frontend** (ESM vanilla) fala com um servidor
 HTTP em Python stdlib; as **rotas** delegam para **domínios** (regras de
 negócio) e **serviços** (lógica pura — senha, sessões, validação); a
-**persistência** fica no Firestore via uma Store injetada, com a credencial
-carregada do Secret Manager.
+**persistência** fica no Firestore (produção) ou num arquivo JSON local (dev)
+via uma Store injetada, com a credencial carregada do Secret Manager no
+primeiro caso.
 
 ```
 ├── server.py                # ponto de entrada: inicia o servidor HTTP
@@ -78,7 +85,7 @@ carregada do Secret Manager.
 │   ├── config.py            # configuração (porta, caminhos, cookies)
 │   ├── domains/             # lógica de negócio (auth, accounts, finance)
 │   ├── services/            # serviços puros (password, sessions, rate_limit, rules)
-│   └── infra/firestore.py   # persistência no Firestore (Secret Manager)
+│   └── infra/               # persistência: firestore.py e json_store.py (local)
 ├── scripts/migrate_data.py       # utilitário de importação de dados legados
 │   └── provision_credential.sh   # provisiona a credencial da SA no Secret Manager
 ├── public/                  # frontend estático

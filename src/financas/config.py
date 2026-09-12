@@ -14,3 +14,8 @@ MIME_TYPES = {
 SESSION_COOKIE = "session"
 PORT = 8765
 MAX_BODY_BYTES = 512_000
+
+# Backend de persistência: "auto" (Firestore se houver credenciais GCP, senão
+# arquivo JSON local), "firestore" forçado ou "local" forçado.
+STORAGE_BACKEND = os.environ.get("FINANCAS_STORAGE", "auto")
+LOCAL_DB_PATH = os.environ.get("FINANCAS_DB", os.path.join(BASE_DIR, "financas-local.json"))
