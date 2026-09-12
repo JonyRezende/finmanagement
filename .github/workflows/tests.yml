@@ -56,6 +56,10 @@ jobs:
           python-version: "3.12"
       - run: pip install -q -r requirements.txt -r requirements-dev.txt
       - run: python -m pytest tests --cov=src --cov-report=xml -q
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: mkdir -p coverage && node --test --experimental-test-coverage --test-reporter=lcov --test-reporter-destination=coverage/lcov.info tests/js/
       - name: SonarCloud
         if: ${{ env.SONAR_TOKEN != '' && vars.SONAR_ENABLED == 'true' }}
         uses: SonarSource/sonarcloud-github-action@v5
