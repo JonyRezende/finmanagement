@@ -30,7 +30,6 @@ Autenticação por email/senha e dados persistidos no Google Cloud Firestore.
 
 ## Testes e qualidade
 
-![Quality Gate](https://sonarcloud.io/api/project_badges/quality_gate?project=JonyRezende_finmanagement)
 ![Coverage](https://sonarcloud.io/api/project_badges/measure?project=JonyRezende_finmanagement&metric=coverage)
 ![Reliability](https://sonarcloud.io/api/project_badges/measure?project=JonyRezende_finmanagement&metric=reliability_rating)
 ![Security](https://sonarcloud.io/api/project_badges/measure?project=JonyRezende_finmanagement&metric=security_rating)
