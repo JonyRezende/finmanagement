@@ -48,7 +48,7 @@ class AuthService:
             raise Error("Muitas tentativas. Tente novamente em instantes.", status=429)
 
         user = self._store.get_user_auth(email)
-        valid = bool(user) and pwd.verify_password(password, user["salt"], user["password_hash"])
+        valid, legacy = self._check_credentials(user, password)
         if not valid:
             if not user:
                 pwd.dummy_verify(password)
@@ -57,10 +57,27 @@ class AuthService:
                 rate_limit.register_failure(ip_key)
             raise Error("Email ou senha inválidos", status=401)
 
+        self._upgrade_legacy_hash(email, password, legacy)
         rate_limit.register_success(email_key)
         if ip_key:
             rate_limit.register_success(ip_key)
         return self.sessions.create(email)
+
+    @staticmethod
+    def _check_credentials(user, password):
+        if not user:
+            return False, False
+        if pwd.verify_password(password, user["salt"], user["password_hash"]):
+            return True, False
+        if pwd.verify_legacy_password(password, user["salt"], user["password_hash"]):
+            return True, True
+        return False, False
+
+    def _upgrade_legacy_hash(self, email, password, legacy):
+        if not legacy:
+            return
+        salt, password_hash = pwd.hash_password(password)
+        self._store.update_password(email, salt, password_hash)
 
     def logout(self, token):
         self.sessions.destroy(token)

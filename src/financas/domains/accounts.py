@@ -10,7 +10,7 @@ class AccountsService:
 
     def change_password(self, email, current_password, new_password, token=None):
         user = self._store.get_user_auth(email)
-        if not user or not password.verify_password(current_password, user["salt"], user["password_hash"]):
+        if not user or not password.verify_password_current(current_password, user["salt"], user["password_hash"]):
             raise Error("Senha atual incorreta", status=401)
         if not rules.is_valid_password(new_password):
             raise Error("A nova senha deve ter entre 8 e 256 caracteres")
@@ -24,7 +24,7 @@ class AccountsService:
         new_email = rules.normalize_email(new_email)
 
         user = self._store.get_user_auth(email)
-        if not user or not password.verify_password(current_password, user["salt"], user["password_hash"]):
+        if not user or not password.verify_password_current(current_password, user["salt"], user["password_hash"]):
             raise Error("Senha atual incorreta", status=401)
         if not rules.is_valid_email(new_email):
             raise Error("Email inválido")
