@@ -47,5 +47,5 @@ jobs:
       - run: pip install -q -r requirements.txt -r requirements-dev.txt
       - run: python -m pytest tests --cov=src --cov-report=xml -q
       - name: SonarCloud
-        if: ${{ env.SONAR_TOKEN != '' }}
+        if: ${{ env.SONAR_TOKEN != '' && vars.SONAR_ENABLED == 'true' }}
         uses: SonarSource/sonarcloud-github-action@v5
