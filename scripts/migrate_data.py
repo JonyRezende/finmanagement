@@ -2,7 +2,7 @@
 """Migra o data.json atual para uma conta nova no Firestore.
 
 Uso:
-    python3 migrate_existing_data.py seu-email@example.com "sua-senha-nova"
+    python3 scripts/migrate_data.py seu-email@example.com "sua-senha-nova"
 
 Cria a conta (mesmo fluxo do /api/register) e grava o conteúdo atual de
 data.json como os dados financeiros dessa conta. Rode uma única vez.
@@ -12,11 +12,13 @@ import os
 import sys
 import time
 
-import auth
-import firestore_client
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_FILE = os.path.join(BASE_DIR, "data.json")
+from src.financas.domains import auth  # noqa: E402
+from src.financas.infra import firestore  # noqa: E402
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_FILE = os.path.join(PROJECT_ROOT, "data.json")
 
 
 def main():
@@ -33,7 +35,7 @@ def main():
     if len(password) < 8:
         print("Senha deve ter ao menos 8 caracteres.")
         sys.exit(1)
-    if firestore_client.get_user_auth(email):
+    if firestore.get_user_auth(email):
         print(f"Já existe uma conta para {email}. Abortando.")
         sys.exit(1)
     if not os.path.exists(DATA_FILE):
@@ -44,13 +46,13 @@ def main():
         existing_data = json.load(f)
 
     salt, password_hash = auth.hash_password(password)
-    firestore_client.save_user_auth(email, {
+    firestore.save_user_auth(email, {
         "email": email,
         "salt": salt,
         "password_hash": password_hash,
         "created_at": time.time(),
     })
-    firestore_client.save_user_data(email, {
+    firestore.save_user_data(email, {
         "recurrences": existing_data.get("recurrences", []),
         "oneOffs": existing_data.get("oneOffs", []),
     })

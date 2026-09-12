@@ -1,7 +1,8 @@
-"""Cliente Firestore: duas coleções, uma pra auth e outra pra dados financeiros.
+"""Persistência no Firestore.
 
 users/{email}      -> credenciais (salt, password_hash, created_at)
 user_data/{email}  -> dados financeiros (recurrences, oneOffs)
+sessions/{token}   -> sessões persistentes (email, expires_at)
 
 Mantidas em coleções separadas para que o caminho de escrita das transações
 financeiras nunca encoste nos campos de senha.
