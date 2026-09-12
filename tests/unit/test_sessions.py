@@ -7,13 +7,13 @@ class FakeStore:
     def __init__(self):
         self.docs = {}
 
-    def save(self, token, email, expires_at):
+    def save_session(self, token, email, expires_at):
         self.docs[token] = {"email": email, "expires_at": expires_at}
 
-    def get(self, token):
+    def get_session(self, token):
         return self.docs.get(token)
 
-    def delete(self, token):
+    def delete_session(self, token):
         self.docs.pop(token, None)
 
 
