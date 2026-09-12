@@ -1,0 +1,1 @@
+"""Serviços de lógica pura e testável (sem dependência de HTTP/Firestore)."""
