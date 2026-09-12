@@ -3,6 +3,7 @@ import re
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 MIN_PASSWORD_LENGTH = 8
+MAX_PASSWORD_LENGTH = 256
 
 
 def normalize_email(email):
@@ -14,4 +15,4 @@ def is_valid_email(email):
 
 
 def is_valid_password(password):
-    return len(password) >= MIN_PASSWORD_LENGTH
+    return MIN_PASSWORD_LENGTH <= len(password) <= MAX_PASSWORD_LENGTH

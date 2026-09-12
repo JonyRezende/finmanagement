@@ -8,15 +8,17 @@ class AccountsService:
         self._store = store
         self._sessions = sessions
 
-    def change_password(self, email, current_password, new_password):
+    def change_password(self, email, current_password, new_password, token=None):
         user = self._store.get_user_auth(email)
         if not user or not password.verify_password(current_password, user["salt"], user["password_hash"]):
             raise Error("Senha atual incorreta", status=401)
         if not rules.is_valid_password(new_password):
-            raise Error("Nova senha deve ter ao menos 8 caracteres")
+            raise Error("A nova senha deve ter entre 8 e 256 caracteres")
 
         salt, password_hash = password.hash_password(new_password)
         self._store.update_password(email, salt, password_hash)
+        if token:
+            self._sessions.destroy_for_email(email, except_token=token)
 
     def change_email(self, email, token, current_password, new_email):
         new_email = rules.normalize_email(new_email)
@@ -34,4 +36,5 @@ class AccountsService:
         self._store.rename_user(email, new_email)
         if token:
             self._sessions.update_email(token, new_email)
+        self._sessions.destroy_for_email(email)
         return new_email

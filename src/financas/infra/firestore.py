@@ -80,6 +80,10 @@ class FirestoreStore:
         doc = self._get_client().collection("sessions").document(token).get()
         return doc.to_dict() if doc.exists else None
 
+    def list_sessions(self, email):
+        docs = self._get_client().collection("sessions").where("email", "==", email).stream()
+        return [doc.id for doc in docs]
+
     def delete_session(self, token):
         self._get_client().collection("sessions").document(token).delete()
 
