@@ -9,8 +9,32 @@ financeiras nunca encoste nos campos de senha.
 
 Implementa a interface de Store usada pelos domínios; testes usam um
 FakeStore em memória com as mesmas assinaturas.
+
+A credencial da SA sai do Secret Manager (env FINANCAS_SA_SECRET) quando
+definida; caso contrário usa as Application Default Credentials (ex. local ou
+GOOGLE_APPLICATION_CREDENTIALS), mantendo compatibilidade com dev/teste.
 """
+import json
+import os
+
 from google.cloud import firestore
+
+
+def _sa_credentials(secret_client=None):
+    secret_name = os.environ.get("FINANCAS_SA_SECRET")
+    if not secret_name:
+        return None
+    from google.auth import default
+    from google.oauth2.service_account import Credentials
+
+    if secret_client is None:
+        from google.cloud import secretmanager
+
+        bootstrap, _ = default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
+        secret_client = secretmanager.SecretManagerServiceClient(credentials=bootstrap)
+    response = secret_client.access_secret_version(name=secret_name)
+    payload = response.payload.data.decode("utf-8")
+    return Credentials.from_service_account_info(json.loads(payload))
 
 
 class FirestoreStore:
@@ -19,7 +43,7 @@ class FirestoreStore:
 
     def _get_client(self):
         if self._client is None:
-            self._client = firestore.Client()
+            self._client = firestore.Client(credentials=_sa_credentials())
         return self._client
 
     # users

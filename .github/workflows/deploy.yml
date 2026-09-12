@@ -19,10 +19,11 @@ jobs:
           chmod 600 ~/.ssh/id_deploy
           ssh-keyscan -H "$GCP_HOST" >> ~/.ssh/known_hosts
 
-      - name: Pull and restart
+      - name: Pull, install deps and restart
         run: |
           ssh -i ~/.ssh/id_deploy "$GCP_USER@$GCP_HOST" \
             'sudo -u Johnny -- git -C /home/Johnny/financas-app pull --ff-only && \
+             sudo -u Johnny /home/Johnny/financas-app/.venv/bin/pip install -q -r /home/Johnny/financas-app/requirements.txt && \
              sudo systemctl restart financas && \
              sleep 2 && \
              sudo systemctl is-active financas'
