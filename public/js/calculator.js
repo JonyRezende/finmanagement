@@ -25,53 +25,75 @@ export function setCalculatorResult(calc, result) {
       : String(Number(result.toFixed(10))).replace(".", ",");
 }
 
-export function applyCalculator(calc, action, value) {
-  if (action === "clear") {
-    Object.assign(calc, { display: "0", expression: "", operand: null, operator: null, waitingForNext: false });
-  } else if (action === "backspace") {
-    if (!calc.waitingForNext && calc.display !== "Erro") {
-      calc.display = calc.display.length > 1 ? calc.display.slice(0, -1) : "0";
-      if (calc.operator) calc.expression = `${calc.operand} ${calculatorOperatorLabel(calc.operator)} ${calc.display}`;
-    }
-  } else if (action === "digit") {
-    if (calc.waitingForNext || calc.display === "Erro") {
-      calc.display = value;
-      calc.waitingForNext = false;
-      if (!calc.operator) calc.expression = "";
-    } else {
-      calc.display = calc.display === "0" ? value : calc.display + value;
-    }
-    if (calc.operator) calc.expression = `${calc.operand} ${calculatorOperatorLabel(calc.operator)} ${calc.display}`;
-  } else if (action === "decimal") {
-    if (calc.waitingForNext || calc.display === "Erro") {
-      calc.display = "0,";
-      calc.waitingForNext = false;
-      if (!calc.operator) calc.expression = "";
-    } else if (!calc.display.includes(",")) {
-      calc.display += ",";
-    }
-    if (calc.operator) calc.expression = `${calc.operand} ${calculatorOperatorLabel(calc.operator)} ${calc.display}`;
-  } else if (action === "operator") {
-    const current = calculatorNumber(calc);
-    if (calc.operator && !calc.waitingForNext) {
-      const result = calculatorResult(calc.operand, current, calc.operator);
-      setCalculatorResult(calc, result);
-      calc.operand = result;
-    } else {
-      calc.operand = current;
-    }
-    calc.operator = value;
-    calc.waitingForNext = true;
-    calc.expression = `${calc.display} ${calculatorOperatorLabel(value)}`;
-  } else if (action === "equals" && calc.operator && !calc.waitingForNext) {
-    const expression = calc.expression;
-    const result = calculatorResult(calc.operand, calculatorNumber(calc), calc.operator);
+function updateExpression(calc) {
+  if (calc.operator) calc.expression = `${calc.operand} ${calculatorOperatorLabel(calc.operator)} ${calc.display}`;
+}
+
+function startFreshInput(calc, value) {
+  calc.display = value;
+  calc.waitingForNext = false;
+  if (!calc.operator) calc.expression = "";
+}
+
+function doClear(calc) {
+  Object.assign(calc, { display: "0", expression: "", operand: null, operator: null, waitingForNext: false });
+}
+
+function doBackspace(calc) {
+  if (calc.waitingForNext || calc.display === "Erro") return;
+  calc.display = calc.display.length > 1 ? calc.display.slice(0, -1) : "0";
+  updateExpression(calc);
+}
+
+function doDigit(calc, value) {
+  if (calc.waitingForNext || calc.display === "Erro") startFreshInput(calc, value);
+  else calc.display = calc.display === "0" ? value : calc.display + value;
+  updateExpression(calc);
+}
+
+function doDecimal(calc) {
+  if (calc.waitingForNext || calc.display === "Erro") startFreshInput(calc, "0,");
+  else if (!calc.display.includes(",")) calc.display += ",";
+  updateExpression(calc);
+}
+
+function doOperator(calc, value) {
+  const current = calculatorNumber(calc);
+  if (calc.operator && !calc.waitingForNext) {
+    const result = calculatorResult(calc.operand, current, calc.operator);
     setCalculatorResult(calc, result);
-    calc.expression = `${expression} =`;
-    calc.operand = null;
-    calc.operator = null;
-    calc.waitingForNext = true;
+    calc.operand = result;
+  } else {
+    calc.operand = current;
   }
+  calc.operator = value;
+  calc.waitingForNext = true;
+  calc.expression = `${calc.display} ${calculatorOperatorLabel(value)}`;
+}
+
+function doEquals(calc) {
+  if (!calc.operator || calc.waitingForNext) return;
+  const expression = calc.expression;
+  const result = calculatorResult(calc.operand, calculatorNumber(calc), calc.operator);
+  setCalculatorResult(calc, result);
+  calc.expression = `${expression} =`;
+  calc.operand = null;
+  calc.operator = null;
+  calc.waitingForNext = true;
+}
+
+const CALC_ACTIONS = {
+  clear: doClear,
+  backspace: doBackspace,
+  digit: doDigit,
+  decimal: doDecimal,
+  operator: doOperator,
+  equals: doEquals,
+};
+
+export function applyCalculator(calc, action, value) {
+  if (!CALC_ACTIONS[action]) return;
+  CALC_ACTIONS[action](calc, value);
 }
 
 export function wireCalculator() {

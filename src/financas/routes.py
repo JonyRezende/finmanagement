@@ -12,6 +12,8 @@ from .app import App
 from .errors import Error
 from .services import rules
 
+UNAUTHENTICATED_MSG = "Não autenticado"
+
 SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
@@ -95,7 +97,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/api/data":
             email = self._current_email()
             if not email:
-                self._send_json({"error": "Não autenticado"}, status=401)
+                self._send_json({"error": UNAUTHENTICATED_MSG}, status=401)
                 return
             self._send_json(self.server.app.finance.get_data(email))
             return
@@ -103,7 +105,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/api/me":
             email = self._current_email()
             if not email:
-                self._send_json({"error": "Não autenticado"}, status=401)
+                self._send_json({"error": UNAUTHENTICATED_MSG}, status=401)
                 return
             self._send_json({"email": email})
             return
@@ -162,7 +164,7 @@ class Handler(BaseHTTPRequestHandler):
         def run():
             email = self._current_email()
             if not email:
-                raise Error("Não autenticado", status=401)
+                raise Error(UNAUTHENTICATED_MSG, status=401)
             payload = self._read_json_body()
             self.server.app.accounts.change_password(
                 email,
@@ -178,7 +180,7 @@ class Handler(BaseHTTPRequestHandler):
             email = self._current_email()
             token = self._current_token()
             if not email:
-                raise Error("Não autenticado", status=401)
+                raise Error(UNAUTHENTICATED_MSG, status=401)
             payload = self._read_json_body()
             new_email = self.server.app.accounts.change_email(
                 email,
@@ -193,7 +195,7 @@ class Handler(BaseHTTPRequestHandler):
         def run():
             email = self._current_email()
             if not email:
-                raise Error("Não autenticado", status=401)
+                raise Error(UNAUTHENTICATED_MSG, status=401)
             if not self._require_json_content_type():
                 raise Error("Content-Type deve ser application/json")
             payload = self._read_json_body()

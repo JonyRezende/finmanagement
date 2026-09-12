@@ -1,5 +1,4 @@
 import { displayMonth } from "./state.js";
-import { render } from "./render.js";
 import { renderExtrato } from "./extrato.js";
 import { renderProjection } from "./projection.js";
 import { loadData } from "./api.js";

@@ -12,5 +12,5 @@ export function parseAmountInput(str) {
 }
 
 export function uid() {
-  return crypto.randomUUID().replace(/-/g, "");
+  return crypto.randomUUID().replaceAll("-", "");
 }
