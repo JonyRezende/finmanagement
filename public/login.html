@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Entrar — Finanças</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="login.css" />
+</head>
+<body class="login-page">
+  <header class="app-header">
+    <h1>Financial Management</h1>
+  </header>
+
+  <main>
+    <section class="login-card">
+      <h2 id="formTitle">Entrar</h2>
+      <form id="authForm" class="login-form">
+        <label>Email
+          <input type="email" id="authEmail" required autocomplete="email" />
+        </label>
+        <label>Senha
+          <input type="password" id="authPassword" required autocomplete="current-password" minlength="8" />
+        </label>
+        <label id="authPasswordConfirmField" class="hidden">Confirmar senha
+          <input type="password" id="authPasswordConfirm" autocomplete="new-password" minlength="8" />
+        </label>
+        <p id="authError" class="login-error hidden"></p>
+        <button type="submit" class="login-submit" id="authSubmitBtn">Entrar</button>
+      </form>
+      <a href="#" id="toggleModeLink" class="login-toggle">Não tem conta? Cadastre-se</a>
+    </section>
+  </main>
+
+  <script src="login.js"></script>
+</body>
+</html>

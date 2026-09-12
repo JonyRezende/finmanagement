@@ -43,6 +43,10 @@ function escapeHtml(str) {
 
 async function loadData() {
   const res = await fetch("/api/data");
+  if (res.status === 401) {
+    window.location.href = "/login.html";
+    return;
+  }
   const json = await res.json();
   state.recurrences = json.recurrences || [];
   state.oneOffs = json.oneOffs || [];
@@ -923,6 +927,11 @@ document.querySelectorAll("[data-calc]").forEach((button) => {
 
     renderCalculator();
   });
+});
+
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+  await fetch("/api/logout", { method: "POST" });
+  window.location.href = "/login.html";
 });
 
 loadData();
