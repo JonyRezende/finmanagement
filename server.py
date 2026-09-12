@@ -39,7 +39,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         if set_cookie:
-            self.send_header("Set-Cookie", f"{SESSION_COOKIE}={set_cookie}; HttpOnly; Path=/; SameSite=Lax")
+            self.send_header("Set-Cookie", f"{SESSION_COOKIE}={set_cookie}; Max-Age=2592000; HttpOnly; Path=/; SameSite=Lax")
         if clear_cookie:
             self.send_header("Set-Cookie", f"{SESSION_COOKIE}=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0")
         self.end_headers()

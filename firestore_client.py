@@ -62,3 +62,19 @@ def rename_user(old_email, new_email):
             transaction.delete(data_ref)
 
     move_user(client.transaction())
+
+
+def save_session(token, email, expires_at):
+    _get_client().collection("sessions").document(token).set({
+        "email": email,
+        "expires_at": expires_at,
+    })
+
+
+def get_session(token):
+    doc = _get_client().collection("sessions").document(token).get()
+    return doc.to_dict() if doc.exists else None
+
+
+def delete_session(token):
+    _get_client().collection("sessions").document(token).delete()
