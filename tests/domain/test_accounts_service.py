@@ -14,7 +14,7 @@ def make_svc():
 
 
 def test_change_password_ok():
-    store, auth, accounts = make_svc()
+    _, auth, accounts = make_svc()
     token = auth.register("a@b.com", "senha1234", "senha1234")
     accounts.change_password("a@b.com", "senha1234", "nova12345")
     auth.logout(token)
@@ -57,7 +57,7 @@ def test_change_email_wrong_password():
 
 
 def test_change_email_conflict():
-    store, auth, accounts = make_svc()
+    _, auth, accounts = make_svc()
     token = auth.register("a@b.com", "senha1234", "senha1234")
     auth.register("x@b.com", "senha1234", "senha1234")
     with pytest.raises(Error) as exc:
@@ -66,7 +66,7 @@ def test_change_email_conflict():
 
 
 def test_change_password_other_sessions_survive():
-    store, auth, accounts = make_svc()
+    _, auth, accounts = make_svc()
     token = auth.register("a@b.com", "senha1234", "senha1234")
     accounts.change_password("a@b.com", "senha1234", "nova12345")
     assert auth.email_for(token) == "a@b.com"
