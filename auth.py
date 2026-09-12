@@ -52,6 +52,11 @@ def destroy_session(token):
     SESSIONS.pop(token, None)
 
 
+def update_session_email(token, new_email):
+    if token in SESSIONS:
+        SESSIONS[token] = new_email
+
+
 def is_login_blocked(email):
     failed_count, blocked_until = _LOGIN_ATTEMPTS.get(email, (0, 0))
     return time.time() < blocked_until

@@ -26,6 +26,7 @@ body {
 }
 
 .app-header {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -36,7 +37,26 @@ body {
   background: var(--surface);
 }
 
-.app-header h1 { margin: 0; font-size: 1.4rem; }
+.app-header h1 {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  font-size: 1.4rem;
+  white-space: nowrap;
+}
+
+.app-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.app-header-sep {
+  color: var(--border);
+  font-weight: 600;
+}
 
 main {
   max-width: 980px;

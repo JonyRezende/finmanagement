@@ -116,6 +116,12 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/api/logout":
             self._handle_logout()
             return
+        if self.path == "/api/account/password":
+            self._handle_change_password()
+            return
+        if self.path == "/api/account/email":
+            self._handle_change_email()
+            return
         if self.path == "/api/data":
             self._handle_save_data()
             return
@@ -191,6 +197,75 @@ class Handler(BaseHTTPRequestHandler):
             if morsel:
                 auth.destroy_session(morsel.value)
         self._send_json({"ok": True}, clear_cookie=True)
+
+    def _current_token(self):
+        raw_cookie = self.headers.get("Cookie")
+        if not raw_cookie:
+            return None
+        jar = cookies.SimpleCookie()
+        jar.load(raw_cookie)
+        morsel = jar.get(SESSION_COOKIE)
+        return morsel.value if morsel else None
+
+    def _handle_change_password(self):
+        email = self._current_email()
+        if not email:
+            self._send_json({"error": "Não autenticado"}, status=401)
+            return
+        try:
+            payload = self._read_json_body()
+        except json.JSONDecodeError:
+            self._send_json({"error": "JSON inválido"}, status=400)
+            return
+
+        current_password = payload.get("current_password") or ""
+        new_password = payload.get("new_password") or ""
+
+        user = firestore_client.get_user_auth(email)
+        if not user or not auth.verify_password(current_password, user["salt"], user["password_hash"]):
+            self._send_json({"error": "Senha atual incorreta"}, status=401)
+            return
+        if len(new_password) < 8:
+            self._send_json({"error": "Nova senha deve ter ao menos 8 caracteres"}, status=400)
+            return
+
+        salt, password_hash = auth.hash_password(new_password)
+        firestore_client.update_password(email, salt, password_hash)
+        self._send_json({"ok": True})
+
+    def _handle_change_email(self):
+        email = self._current_email()
+        token = self._current_token()
+        if not email:
+            self._send_json({"error": "Não autenticado"}, status=401)
+            return
+        try:
+            payload = self._read_json_body()
+        except json.JSONDecodeError:
+            self._send_json({"error": "JSON inválido"}, status=400)
+            return
+
+        current_password = payload.get("current_password") or ""
+        new_email = auth.normalize_email(payload.get("new_email"))
+
+        user = firestore_client.get_user_auth(email)
+        if not user or not auth.verify_password(current_password, user["salt"], user["password_hash"]):
+            self._send_json({"error": "Senha atual incorreta"}, status=401)
+            return
+        if not auth.is_valid_email(new_email):
+            self._send_json({"error": "Email inválido"}, status=400)
+            return
+        if new_email == email:
+            self._send_json({"error": "O novo email deve ser diferente do atual"}, status=400)
+            return
+        if firestore_client.get_user_auth(new_email):
+            self._send_json({"error": "Email já cadastrado"}, status=409)
+            return
+
+        firestore_client.rename_user(email, new_email)
+        if token:
+            auth.update_session_email(token, new_email)
+        self._send_json({"email": new_email})
 
     def _handle_save_data(self):
         email = self._current_email()
