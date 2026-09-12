@@ -34,3 +34,31 @@ def get_user_data(email):
 
 def save_user_data(email, data):
     _get_client().collection("user_data").document(email).set(data)
+
+
+def update_password(email, salt, password_hash):
+    _get_client().collection("users").document(email).update({
+        "salt": salt,
+        "password_hash": password_hash,
+    })
+
+
+def rename_user(old_email, new_email):
+    client = _get_client()
+
+    @firestore.transactional
+    def move_user(transaction):
+        users = client.collection("users")
+        data = client.collection("user_data")
+        auth_ref = users.document(old_email)
+        data_ref = data.document(old_email)
+        auth_doc = auth_ref.get(transaction=transaction)
+        data_doc = data_ref.get(transaction=transaction)
+        if auth_doc.exists:
+            transaction.set(users.document(new_email), auth_doc.to_dict())
+            transaction.delete(auth_ref)
+        if data_doc.exists:
+            transaction.set(data.document(new_email), data_doc.to_dict())
+            transaction.delete(data_ref)
+
+    move_user(client.transaction())

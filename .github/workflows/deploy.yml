@@ -1,0 +1,28 @@
+name: Deploy to GCP
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.GCP_DEPLOY_KEY }}
+
+      - name: Trust instance host key
+        run: ssh-keyscan -H ${{ secrets.GCP_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Pull and restart
+        run: |
+          ssh ${{ secrets.GCP_USER }}@${{ secrets.GCP_HOST }} \
+            'sudo -u Johnny -- git -C /home/Johnny/financas-app pull --ff-only && \
+             sudo systemctl restart financas && \
+             sudo systemctl is-active financas'
+
+      - name: Smoke test
+        run: curl -fsS -o /dev/null -w "HTTP %{http_code}\n" https://finpilot.jonyrezende.dev
