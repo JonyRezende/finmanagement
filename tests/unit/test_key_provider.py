@@ -1,4 +1,5 @@
 import base64
+import sys
 import types
 
 import pytest
@@ -44,6 +45,29 @@ def test_loads_key_from_secret_manager(monkeypatch):
     assert provider.get_master_key() == bytes(32)
 
 
+def test_loads_key_with_default_client(monkeypatch):
+    key = _test_key_b64()
+    secret_name = "projects/p/secrets/s/versions/latest"
+    monkeypatch.setenv(config.ENCRYPTION_SECRET_ENV, secret_name)
+
+    fake_module = types.ModuleType("google.cloud.secretmanager")
+
+    class FakeSMClient:
+        def __init__(self):
+            self.calls = []
+
+        def access_secret_version(self, name):
+            self.calls.append(name)
+            return types.SimpleNamespace(payload=types.SimpleNamespace(data=key.encode("utf-8")))
+
+    instance = FakeSMClient()
+    fake_module.SecretManagerServiceClient = lambda: instance
+    monkeypatch.setitem(sys.modules, "google.cloud.secretmanager", fake_module)
+
+    assert key_provider.DataKeyProvider().get_master_key() == bytes(32)
+    assert instance.calls == [secret_name]
+
+
 def test_missing_key_raises(monkeypatch):
     monkeypatch.delenv(config.ENCRYPTION_KEY_ENV, raising=False)
     monkeypatch.delenv(config.ENCRYPTION_SECRET_ENV, raising=False)
@@ -60,6 +84,17 @@ def test_short_key_rejected(monkeypatch):
 
 def test_invalid_base64_key_rejected(monkeypatch):
     monkeypatch.setenv(config.ENCRYPTION_KEY_ENV, "not-base64!!!")
+    monkeypatch.delenv(config.ENCRYPTION_SECRET_ENV, raising=False)
+    with pytest.raises(Error):
+        key_provider.DataKeyProvider().get_master_key()
+
+
+def test_unexpected_base64_error_rejected(monkeypatch):
+    def _boom(raw):
+        raise ValueError("corrompido")
+
+    monkeypatch.setattr(key_provider.base64, "b64decode", _boom)
+    monkeypatch.setenv(config.ENCRYPTION_KEY_ENV, "AAAA")
     monkeypatch.delenv(config.ENCRYPTION_SECRET_ENV, raising=False)
     with pytest.raises(Error):
         key_provider.DataKeyProvider().get_master_key()
