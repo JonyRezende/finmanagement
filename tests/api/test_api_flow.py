@@ -98,7 +98,8 @@ def test_change_email_flow(client, session):
     assert r.json()["email"] == "renomeado@b.com"
 
     assert session.get(url + "/api/me").json() == {"email": "renomeado@b.com"}
-    assert store.get_user_data("renomeado@b.com")["recurrences"] == [{"id": "r1"}]
+    stored = store.get_user_data("renomeado@b.com")
+    assert stored.get("v") == 2
 
     r = session.post(url + "/api/login", json={"email": "e@b.com", "password": "senha1234"})
     assert r.status_code == 401

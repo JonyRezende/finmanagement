@@ -34,6 +34,10 @@ class JsonStore:
 
     # users
 
+    def list_user_emails(self):
+        with self._lock:
+            return list(self._data["users"].keys())
+
     def get_user_auth(self, email):
         with self._lock:
             return self._data["users"].get(email)

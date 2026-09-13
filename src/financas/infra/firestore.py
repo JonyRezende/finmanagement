@@ -48,6 +48,10 @@ class FirestoreStore:
 
     # users
 
+    def list_user_emails(self):
+        docs = self._get_client().collection("users").stream()
+        return [doc.id for doc in docs]
+
     def get_user_auth(self, email):
         doc = self._get_client().collection("users").document(email).get()
         return doc.to_dict() if doc.exists else None
