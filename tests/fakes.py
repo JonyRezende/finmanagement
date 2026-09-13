@@ -13,6 +13,9 @@ class FakeStore:
     def get_user_auth(self, email):
         return self.users.get(email)
 
+    def list_user_emails(self):
+        return list(self.users.keys())
+
     def save_user_auth(self, email, data):
         self.users[email] = dict(data)
 

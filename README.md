@@ -2,7 +2,9 @@
 
 Aplicação web de finanças pessoais para controle de fluxo de caixa mensal:
 recorrências, parcelamentos, lançamentos avulsos, projeção de saldo e gráficos.
-Autenticação por email/senha e dados persistidos no Google Cloud Firestore.
+Autenticação por email/senha, senhas com hash PBKDF2, **dados financeiros
+criptografados em repouso** (AES-GCM, chave por usuário) e persistidos no
+Google Cloud Firestore.
 
 ## Funcionalidades
 
@@ -55,17 +57,27 @@ configuradas, os dados ficam num arquivo local `financas-local.json`
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 
-# 2. Suba o servidor
+# 2. Gere e exporte a chave de criptografia (base64 de 32 bytes)
+export FINANCAS_ENCRYPTION_KEY="$(python3 -c 'import os,base64;print(base64.b64encode(os.urandom(32)).decode())')"
+
+# 3. Suba o servidor
 .venv/bin/python server.py
 ```
 
-Abra no navegador o endereço local informado no terminal ao iniciar.
+**Importante**: sem uma chave de criptografia, a gravação de dados financeiros
+falha (fail-closed). Guarde a chave em local seguro — sem ela, os dados cifrados
+não podem ser lidos.
 
 O backend de persistência é escolhido automaticamente: com credenciais GCP
 (`FINANCAS_SA_SECRET` ou `GOOGLE_APPLICATION_CREDENTIALS`) usa o Firestore;
 caso contrário, o JSON local. Para forçar: `FINANCAS_STORAGE=local` ou
 `FINANCAS_STORAGE=firestore`. O caminho do arquivo local pode ser definido
 por `FINANCAS_DB`.
+
+Em produção, a chave-mestra de criptografia deve sair do Secret Manager via
+`FINANCAS_ENCRYPTION_SECRET` (nome completo do secret, ex.
+`projects/meu-projeto/secrets/financas-encryption-key/versions/latest`). Para
+cifrar dados já gravados em texto puro, rode `scripts/encrypt_existing.py`.
 
 ## Estrutura e arquitetura
 
@@ -84,9 +96,10 @@ primeiro caso.
 │   ├── errors.py            # erros com status HTTP
 │   ├── config.py            # configuração (porta, caminhos, cookies)
 │   ├── domains/             # lógica de negócio (auth, accounts, finance)
-│   ├── services/            # serviços puros (password, sessions, rate_limit, rules)
+│   ├── services/            # serviços puros (password, sessions, crypto, key_provider, rate_limit, rules)
 │   └── infra/               # persistência: firestore.py e json_store.py (local)
 ├── scripts/migrate_data.py       # utilitário de importação de dados legados
+│   └── encrypt_existing.py        # re-cifra dados legados em texto puro
 │   └── provision_credential.sh   # provisiona a credencial da SA no Secret Manager
 ├── public/                  # frontend estático
 │   ├── index.html           # painel de finanças

@@ -33,6 +33,14 @@ def test_persists_across_instances(tmp_path):
     assert again.get_user_data("a@b.com")["recurrences"] == []
 
 
+def test_list_user_emails(tmp_path):
+    store = make_store(tmp_path)
+    assert store.list_user_emails() == []
+    store.save_user_auth("a@b.com", {"email": "a@b.com", "salt": "s", "password_hash": "h", "created_at": 1})
+    store.save_user_auth("c@d.com", {"email": "c@d.com", "salt": "s", "password_hash": "h", "created_at": 1})
+    assert set(store.list_user_emails()) == {"a@b.com", "c@d.com"}
+
+
 def test_rename_user_moves_auth_and_data(tmp_path):
     store = make_store(tmp_path)
     store.save_user_auth("a@b.com", {"email": "a@b.com", "salt": "s", "password_hash": "h", "created_at": 1})

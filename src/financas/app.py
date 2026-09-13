@@ -34,8 +34,8 @@ def make_default_store():
 
 
 class App:
-    def __init__(self, store=None):
+    def __init__(self, store=None, key_provider=None):
         self.store = store or make_default_store()
         self.auth = auth.AuthService(self.store)
         self.accounts = accounts.AccountsService(self.store, self.auth.sessions)
-        self.finance = finance.FinanceService(self.store)
+        self.finance = finance.FinanceService(self.store, key_provider)

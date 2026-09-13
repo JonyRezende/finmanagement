@@ -8,3 +8,4 @@ data.json
 coverage.xml
 coverage/
 financas-local.json
+.financas-key
